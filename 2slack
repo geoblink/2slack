@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+#
+# 2slack: Send messages to Slack from the command line
+#
+
+msgUsage() {
+  cat <<__usage__
+Usage: $APP_NAME <options>
+Where options are:
+  -w webhook    Slack webhook url
+  -c channel    Specify a Slack #channel or specific @username
+  -u username   Override default username
+  -i icon       Override default bot icon image
+  -t text       Text message to send
+  -h            Show this help information
+Default options could be read from configuration file ~/.$APP_NAME
+Examples:
+  $APP_NAME -u "John Doe" -i ":smile:" -c "#myteam" -t "hi team"
+  uptime | $APP_NAME
+__usage__
+  exit 0
+}
+
+msgError() {
+  echo "ERROR $@" 2>&1
+  echo "Run 2slack -h for usage information"
+  exit 1
+}
+
+readonly APP_NAME=$(basename $0)
+readonly APP_CONFIG=/opt/$APP_NAME/${APP_NAME}.conf
+readonly APP_USERCONFIG=$HOME/.2slack.conf
+readonly TMP_FILE="$(mktemp)"
+readonly MAX_LINES=6
+
+# set defaults
+SLACK_WEBHOOK=""
+SLACK_CHANNEL=""
+SLACK_USERNAME=""
+SLACK_ICON=""
+SLACK_TEXT=""
+
+# read config file
+[ -f $APP_CONFIG ] && source $APP_CONFIG
+# read user config file
+[ -f $APP_USERCONFIG ] && source $APP_USERCONFIG
+
+# read input vars (overlay the ones from the config file)
+#TODO: shopt
+while [ $1 ]; do
+  case $1 in
+    -w) shift ; SLACK_WEBHOOK="$1" ;;
+    -c) shift ; SLACK_CHANNEL="$1" ;;
+    -u) shift ; SLACK_USERNAME="$1" ;;
+    -i) shift ; SLACK_ICON="$1" ;;
+    -t) shift ; SLACK_TEXT="$1" ;;
+    -*) msgUsage ;;
+  esac
+  shift
+done
+
+# if text to send is empty then read it from stdin
+if [ "$SLACK_TEXT" == "" ]; then
+  count=0
+  SLACK_TEXT='```'
+  while read -t 1 line; do
+    if [ $count -ge $MAX_LINES ]; then
+      echo "WARNING: Your reach the maxlimit for lines to send: $MAX_LINES"
+      break
+    fi
+    SLACK_TEXT="${SLACK_TEXT}\n${line}"
+    let count++
+  done
+  SLACK_TEXT="${SLACK_TEXT}"'```'
+  # text inside code delimiters (```) could not be empty
+  [ "$SLACK_TEXT" == '``````' ] && SLACK_TEXT=""
+fi
+
+# check all required values
+[ "$SLACK_WEBHOOK" == "" ] && msgError "empty var SLACK_WEBHOOK"
+[ "$SLACK_CHANNEL" == "" ] && msgError "empty var SLACK_CHANNEL"
+[ "$SLACK_TEXT" == "" ]    && msgError "empty var SLACK_TEXT"
+
+# sanitize text to send
+# - replace doble quotes
+SLACK_TEXT="$(echo $SLACK_TEXT | tr '"' "'")"
+# - encode html entities
+SLACK_TEXT="$(echo $SLACK_TEXT | sed -e 's|&|&amp;|g' -e 's|<|&lt;|g' -e 's|>|&gt;|g')"
+
+# build payload message (json)
+cat > $TMP_FILE << __EOF__
+payload={
+  "channel"     : "$SLACK_CHANNEL",
+__EOF__
+if [ "$SLACK_USERNAME" != "" ]; then
+cat >> $TMP_FILE << __EOF__
+  "username"    : "$SLACK_USERNAME",
+__EOF__
+fi
+if [ "$SLACK_ICON" != "" ]; then
+cat >> $TMP_FILE << __EOF__
+  "icon_emoji"  : "$SLACK_ICON",
+__EOF__
+fi
+cat >> $TMP_FILE << __EOF__
+  "text"        : "$SLACK_TEXT"
+}
+__EOF__
+
+# send data to slack
+curl -X POST --data-binary "@$TMP_FILE" "$SLACK_WEBHOOK"
+
+rm -f $TMP_FILE
+
+# End of file

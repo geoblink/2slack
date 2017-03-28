@@ -1,0 +1,10 @@
+#
+# 2slack.conf
+#
+
+SLACK_WEBHOOK="https://hooks.slack.com/services/XXXXXXXXX/YYYYYYYYY/ZZZZZZZZZZZZZZZZZZZZZZZZ"
+SLACK_USERNAME="myusername"
+SLACK_ICON=":smile:"
+SLACK_CHANNEL="#mychannel"
+
+# End of file
