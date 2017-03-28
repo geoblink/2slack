@@ -1,0 +1,16 @@
+#
+# 2slack.conf
+#
+# Sample file to use in combination with Monit service alerts
+#
+# Example:
+# if cpu > 80% for 2 cycles then alert
+# if cpu > 80% for 2 cycles then exec "2slack" else if succeeded then exec "2slack"
+
+SLACK_WEBHOOK="https://hooks.slack.com/services/XXXXXXXXX/YYYYYYYYY/ZZZZZZZZZZZZZZZZZZZZZZZZ"
+SLACK_USERNAME="monit@$(hostname)"
+SLACK_ICON=":monit:"
+SLACK_CHANNEL="#monit-alerts"
+SLACK_TEXT="$MONIT_EVENT $MONIT_DESCRIPTION"
+
+# End of file
