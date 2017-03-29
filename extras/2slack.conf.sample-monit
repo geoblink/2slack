@@ -11,6 +11,6 @@ SLACK_WEBHOOK="https://hooks.slack.com/services/XXXXXXXXX/YYYYYYYYY/ZZZZZZZZZZZZ
 SLACK_USERNAME="monit@$(hostname)"
 SLACK_ICON=":monit:"
 SLACK_CHANNEL="#monit-alerts"
-SLACK_TEXT="$MONIT_EVENT $MONIT_DESCRIPTION"
+[ "$MONIT_EVENT" != "" ] && SLACK_TEXT="$MONIT_EVENT - $MONIT_DESCRIPTION"
 
 # End of file
